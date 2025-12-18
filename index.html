@@ -1,0 +1,1314 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-HK">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>籃球場查詢系統</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Microsoft JhengHei', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-color: #f5f5f5;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c6c91, #2c3e50);
+            color: white;
+            padding: 15px 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header h1 i {
+            color: #ffcc00;
+        }
+
+        .header p {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            max-width: 800px;
+        }
+
+        .container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Accordion Styles */
+        .accordion-panel {
+            width: 400px;
+            background-color: white;
+            border-right: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
+            z-index: 500;
+            transition: transform 0.3s ease;
+        }
+
+        .accordion {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        .accordion-item {
+            margin-bottom: 15px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e0e0e0;
+        }
+
+        .accordion-header {
+            background-color: #2c6c91;
+            color: white;
+            padding: 15px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+
+        .accordion-header:hover {
+            background-color: #1a5c7a;
+        }
+
+        .accordion-header.active {
+            background-color: #2c3e50;
+        }
+
+        .accordion-content {
+            background-color: white;
+            padding: 0;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease, padding 0.3s ease;
+        }
+
+        .accordion-content.active {
+            padding: 20px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        /* District Accordion Styles */
+        .district-accordion {
+            margin-bottom: 10px;
+        }
+
+        .district-header {
+            background-color: #4a90e2;
+            color: white;
+            padding: 12px 15px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
+            border-radius: 6px;
+            margin-bottom: 5px;
+            transition: background-color 0.2s;
+        }
+
+        .district-header:hover {
+            background-color: #3a80d2;
+        }
+
+        .district-header.active {
+            background-color: #2c6c91;
+        }
+
+        .district-content {
+            background-color: #f8f9fa;
+            padding: 0;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease, padding 0.3s ease;
+            border-radius: 0 0 6px 6px;
+        }
+
+        .district-content.active {
+            padding: 15px;
+            overflow-y: auto;
+            min-height: 400px;
+        }
+
+        .facility-item {
+            background-color: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .facility-item:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            border-color: #4a90e2;
+        }
+
+        .facility-item.active {
+            border-color: #ffcc00;
+            background-color: #fff9e6;
+        }
+
+        .facility-name {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 8px;
+            font-size: 1rem;
+        }
+
+        .facility-details {
+            font-size: 0.9rem;
+            color: #666;
+            line-height: 1.5;
+        }
+
+        .facility-detail-item {
+            margin-bottom: 5px;
+            display: flex;
+            align-items: flex-start;
+        }
+
+        .facility-detail-item i {
+            color: #2c6c91;
+            margin-right: 8px;
+            margin-top: 3px;
+            width: 16px;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .btn {
+            background-color: #2c6c91;
+            color: white;
+            border: none;
+            padding: 12px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            width: 100%;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .btn:hover {
+            background-color: #1a5c7a;
+        }
+
+        .btn.active {
+            background-color: #2c3e50;
+        }
+
+        .btn-danger {
+            background-color: #e74c3c;
+        }
+
+        .btn-danger:hover {
+            background-color: #c0392b;
+        }
+
+        .btn-success {
+            background-color: #27ae60;
+        }
+
+        .btn-success:hover {
+            background-color: #219653;
+        }
+
+        .info-box {
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid #2c6c91;
+            font-size: 0.9rem;
+        }
+
+        .info-box h4 {
+            margin-bottom: 8px;
+            color: #2c3e50;
+        }
+
+        /* Search Box */
+        .search-box {
+            margin-bottom: 15px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #2c6c91;
+        }
+
+        /* Map Styles */
+        .map-container {
+            flex: 1;
+            position: relative;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* Footer Styles */
+        .footer {
+            background-color: #2c3e50;
+            color: white;
+            padding: 6px 20px;
+            text-align: center;
+            font-size: 0.85rem;
+            border-top: 1px solid #4a6491;
+            z-index: 1000;
+        }
+
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 15px;
+        }
+
+        .footer-links a {
+            color: #ecf0f1;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .footer-links a:hover {
+            color: #3498db;
+        }
+
+        /* Mobile Responsiveness */
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+            }
+
+            .accordion-panel {
+                width: 100%;
+                height: 40vh;
+                border-right: none;
+                border-bottom: 1px solid #ddd;
+            }
+
+            .header h1 {
+                font-size: 1.3rem;
+            }
+
+            .header p {
+                font-size: 0.85rem;
+            }
+
+            .accordion-header {
+                padding: 12px 15px;
+                font-size: 0.95rem;
+            }
+
+            .btn {
+                padding: 10px 15px;
+                font-size: 0.95rem;
+            }
+
+            .footer-content {
+                flex-direction: column;
+                gap: 8px;
+                text-align: center;
+            }
+
+            .footer-links {
+                justify-content: center;
+            }
+        }
+
+        /* For very small screens like iPhone SE */
+        @media (max-width: 375px) {
+            .header {
+                padding: 12px 15px;
+            }
+
+            .header h1 {
+                font-size: 1.2rem;
+            }
+
+            .header p {
+                font-size: 0.8rem;
+            }
+
+            .accordion {
+                padding: 10px;
+            }
+
+            .accordion-header {
+                padding: 10px 12px;
+                font-size: 0.9rem;
+            }
+
+            .accordion-content.active {
+                padding: 15px;
+            }
+
+            .btn {
+                padding: 8px 12px;
+                font-size: 0.9rem;
+            }
+
+            .footer {
+                padding: 10px 15px;
+                font-size: 0.8rem;
+            }
+        }
+
+        /* Stats Display */
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            padding: 10px 0;
+            border-top: 1px dashed #ddd;
+            font-size: 0.9rem;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-weight: bold;
+            color: #2c3e50;
+            font-size: 1.2rem;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 0.8rem;
+        }
+
+        /* Toggle panel button for mobile */
+        .panel-toggle {
+            display: none;
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 12px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            cursor: pointer;
+        }
+
+        @media (max-width: 768px) {
+            .panel-toggle {
+                display: block;
+            }
+
+            .accordion-panel.collapsed {
+                transform: translateY(-100%);
+                height: 0;
+                overflow: hidden;
+            }
+        }
+
+        /* Legend */
+        .legend {
+            background-color: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-top: 10px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+            border-radius: 3px;
+        }
+
+        /* Loading indicator */
+        .loading {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 20px 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            text-align: center;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #2c6c91;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Coordinates display */
+        .coordinates {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 10px 15px;
+            border-radius: 5px;
+            font-size: 0.85rem;
+            z-index: 500;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        /* District Counter */
+        .district-counter {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
+            border-radius: 12px;
+            padding: 2px 10px;
+            font-size: 0.8rem;
+            margin-left: 8px;
+        }
+
+        .facility-counter {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #4a90e2;
+            color: white;
+            border-radius: 10px;
+            padding: 1px 8px;
+            font-size: 0.75rem;
+            margin-left: 8px;
+        }
+        
+        /* Basketball court specific styles */
+        .court-count {
+            background-color: #27ae60;
+            color: white;
+            border-radius: 10px;
+            padding: 2px 8px;
+            font-size: 0.8rem;
+            margin-left: 8px;
+            display: inline-block;
+        }
+        
+        .facility-type {
+            background-color: #f39c12;
+            color: white;
+            border-radius: 10px;
+            padding: 2px 8px;
+            font-size: 0.8rem;
+            margin-left: 8px;
+            display: inline-block;
+        }
+        
+        .amenities {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 8px;
+        }
+        
+        .amenity-tag {
+            background-color: #e8f4fd;
+            color: #2c6c91;
+            border-radius: 12px;
+            padding: 2px 8px;
+            font-size: 0.75rem;
+            border: 1px solid #b8d8f0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1><i class="fas fa-basketball-ball"></i> 籃球場查詢系統</h1>
+        <p>查詢全港各區康樂及文化事務署轄下籃球場資訊，包括地址、設施、籃球場數量等</p>
+    </div>
+
+    <div class="container">
+        <button class="panel-toggle" id="panelToggle" style="display:none">
+            <i class="fas fa-bars"></i> 控制面板
+        </button>
+
+        <div class="accordion-panel" id="accordionPanel">
+            <div class="accordion">
+                <!-- Basketball Courts List -->
+                <div class="accordion-item">
+                    <div class="accordion-header active" id="headerCourts">
+                        <span><i class="fas fa-list"></i> 籃球場列表</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="accordion-content active" id="contentCourts">
+                        <div class="search-box">
+                            <input type="text" id="searchInput" class="search-input" placeholder="搜尋場地名稱、地址或設施...">
+                        </div>
+
+                        <div class="info-box">
+                            <h4><i class="fas fa-info-circle"></i> 使用說明</h4>
+                            <p>1. 點擊地區展開查看該區的籃球場</p>
+                            <p>2. 點擊籃球場查看詳細資訊</p>
+                            <p>3. 使用搜尋框快速查找特定場地</p>
+                            <p>4. 點擊地圖上的標記查看更多詳情</p>
+                        </div>
+
+                        <div class="stats">
+                            <div class="stat-item">
+                                <div class="stat-value" id="totalCourts">0</div>
+                                <div class="stat-label">總數</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="totalDistricts">0</div>
+                                <div class="stat-label">地區</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-value" id="totalBasketballCourts">0</div>
+                                <div class="stat-label">籃球場</div>
+                            </div>
+                        </div>
+
+                        <div id="basketballCourtsList">
+                            <!-- Basketball courts will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Map Settings -->
+                <div class="accordion-item">
+                    <div class="accordion-header" id="headerSettings">
+                        <span><i class="fas fa-cog"></i> 地圖設定</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="accordion-content" id="contentSettings">
+                        <div class="control-group">
+                            <label><i class="fas fa-map"></i> 底圖樣式</label>
+                            <select id="baseMapSelect" class="btn" style="padding: 10px;">
+                                <option value="OpenStreetMap">OpenStreetMap</option>
+                                <option value="地形圖">地形圖</option>
+                                <option value="衛星圖像">衛星圖像</option>
+                            </select>
+                        </div>
+
+                        <div class="control-group">
+                            <label><i class="fas fa-search"></i> 縮放級別</label>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <button class="btn" id="zoomInBtn" style="width: auto; flex: 1;">
+                                    <i class="fas fa-search-plus"></i> 放大
+                                </button>
+                                <button class="btn" id="zoomOutBtn" style="width: auto; flex: 1;">
+                                    <i class="fas fa-search-minus"></i> 縮小
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="control-group">
+                            <label><i class="fas fa-location-arrow"></i> 重置視圖</label>
+                            <button class="btn" id="resetViewBtn">
+                                <i class="fas fa-globe-asia"></i> 重置至香港全境
+                            </button>
+                        </div>
+
+                        <div class="legend">
+                            <label><i class="fas fa-layer-group"></i> 圖例</label>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background-color: #ff6b6b;"></div>
+                                <span>籃球場設施</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color" style="background-color: #4a90e2;"></div>
+                                <span>已選取場地</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="map-container">
+            <div id="map"></div>
+            <div class="loading" id="loadingIndicator">
+                <div class="spinner"></div>
+                <p>正在載入籃球場數據...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-copyright">
+                &copy; 2024 籃球場查詢系統<br />數據由康樂及文化事務署提供
+            </div>
+        </div>
+    </footer>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        // Initialize variables
+        let map;
+        let basketballCourtsLayer;
+        let selectedCourt = null;
+        let allBasketballCourts = [];
+        let groupedByDistrict = {};
+
+        // Add base layers
+        const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> contributors'
+        });
+
+        const topoLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+            attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
+        });
+
+        const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+        });
+
+        // Add layer control
+        const baseLayers = {
+            "OpenStreetMap": osmLayer,
+            "地形圖": topoLayer,
+            "衛星圖像": satelliteLayer
+        };
+        var currentTileLayer = baseLayers["OpenStreetMap"];
+
+        // Initialize map when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function () {
+            initMap();
+            setupAccordion();
+            setupEventListeners();
+            loadBasketballCourtsData();
+
+            // Handle mobile panel toggle
+            const panelToggle = document.getElementById('panelToggle');
+            const accordionPanel = document.getElementById('accordionPanel');
+
+            panelToggle.addEventListener('click', function () {
+                accordionPanel.classList.toggle('collapsed');
+                panelToggle.innerHTML = accordionPanel.classList.contains('collapsed')
+                    ? '<i class="fas fa-bars"></i> 顯示控制面板'
+                    : '<i class="fas fa-bars"></i> 隱藏控制面板';
+            });
+        });
+
+        // Initialize the map
+        function initMap() {
+            // Set initial view to Hong Kong
+            map = L.map('map', { zoomControl: false }).setView([22.3193, 114.1694], 11);
+
+            // Add default layer
+            currentTileLayer.addTo(map);
+        }
+
+        // Setup accordion functionality
+        function setupAccordion() {
+            const accordionHeaders = document.querySelectorAll('.accordion-header');
+
+            accordionHeaders.forEach(header => {
+                header.addEventListener('click', function (e) {
+                    const content = this.nextElementSibling;
+                    const isActive = this.classList.contains('active');
+
+                    // Close all accordion items
+                    accordionHeaders.forEach(h => {
+                        h.classList.remove('active');
+                        h.querySelector('.fa-chevron-down').style.transform = 'rotate(0deg)';
+                    });
+
+                    document.querySelectorAll('.accordion-content').forEach(c => {
+                        c.classList.remove('active');
+                    });
+
+                    // Open clicked item if it was not active
+                    if (!isActive) {
+                        this.classList.add('active');
+                        content.classList.add('active');
+                        this.querySelector('.fa-chevron-down').style.transform = 'rotate(180deg)';
+                    }
+
+                    map.invalidateSize();
+                });
+            });
+        }
+
+        // Setup button event listeners
+        function setupEventListeners() {
+            // Map controls
+            document.getElementById('zoomInBtn').addEventListener('click', function () {
+                map.zoomIn();
+            });
+
+            document.getElementById('zoomOutBtn').addEventListener('click', function () {
+                map.zoomOut();
+            });
+
+            document.getElementById('resetViewBtn').addEventListener('click', function () {
+                map.setView([22.3193, 114.1694], 11);
+            });
+
+            // Base map selector
+            document.getElementById('baseMapSelect').addEventListener('change', function (e) {
+                // Remove current layer
+                map.removeLayer(currentTileLayer);
+
+                // Add new layer
+                currentTileLayer = baseLayers[e.target.value];
+                currentTileLayer.addTo(map);
+            });
+
+            // Search input
+            document.getElementById('searchInput').addEventListener('input', function (e) {
+                filterBasketballCourts(e.target.value);
+            });
+        }
+
+        // Load Basketball Courts data from the WFS service
+        async function loadBasketballCourtsData() {
+            const loadingIndicator = document.getElementById('loadingIndicator');
+            loadingIndicator.style.display = 'block';
+
+            try {
+                // Using the specified API endpoint for basketball courts
+                const apiUrl = 'https://portal.csdi.gov.hk/server/services/common/lcsd_rcd_1629267205215_38105/MapServer/WFSServer?service=wfs&request=GetFeature&typenames=geodatastore&outputFormat=geojson';
+
+                const response = await fetch(apiUrl);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                allBasketballCourts = data.features || [];
+
+                // Group courts by district
+                groupedByDistrict = {};
+                allBasketballCourts.forEach(court => {
+                    const district = court.properties.SEARCH01_TC || '未分類';
+                    if (!groupedByDistrict[district]) {
+                        groupedByDistrict[district] = [];
+                    }
+                    groupedByDistrict[district].push(court);
+                });
+
+                // Update stats
+                updateStats();
+
+                // Render accordion list
+                renderBasketballCourtsList();
+
+                // Create markers on map
+                createMapMarkers();
+
+            } catch (error) {
+                console.error('Error loading Basketball Courts data:', error);
+                alert('無法載入籃球場數據，請檢查網絡連接或稍後再試。');
+            } finally {
+                loadingIndicator.style.display = 'none';
+            }
+        }
+
+        // Update statistics display
+        function updateStats() {
+            const totalCourts = allBasketballCourts.length;
+            const totalDistricts = Object.keys(groupedByDistrict).length;
+            
+            // Calculate total basketball courts count
+            let totalBasketballCourts = 0;
+            allBasketballCourts.forEach(court => {
+                const courtCount = parseInt(court.properties.No__of_Basketball_Courts_TC) || 0;
+                totalBasketballCourts += courtCount;
+            });
+
+            document.getElementById('totalCourts').textContent = totalCourts;
+            document.getElementById('totalDistricts').textContent = totalDistricts;
+            document.getElementById('totalBasketballCourts').textContent = totalBasketballCourts;
+        }
+
+        // Render basketball courts list in accordion
+        function renderBasketballCourtsList() {
+            const container = document.getElementById('basketballCourtsList');
+            container.innerHTML = '';
+
+            // Sort districts alphabetically
+            const sortedDistricts = Object.keys(groupedByDistrict).sort();
+
+            sortedDistricts.forEach(district => {
+                const courts = groupedByDistrict[district];
+
+                // Create district accordion item
+                const districtAccordion = document.createElement('div');
+                districtAccordion.className = 'district-accordion';
+                districtAccordion.innerHTML = `
+                    <div class="district-header">
+                        <span>
+                            ${district}
+                            <span class="facility-counter">${courts.length}</span>
+                        </span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="district-content"></div>
+                `;
+
+                container.appendChild(districtAccordion);
+
+                // Add click event to district header
+                const districtHeader = districtAccordion.querySelector('.district-header');
+                const districtContent = districtAccordion.querySelector('.district-content');
+
+                districtHeader.addEventListener('click', function () {
+                    const isActive = this.classList.contains('active');
+
+                    // Toggle active class
+                    this.classList.toggle('active');
+                    districtContent.classList.toggle('active');
+
+                    // Rotate icon
+                    const icon = this.querySelector('.fa-chevron-down');
+                    icon.style.transform = isActive ? 'rotate(0deg)' : 'rotate(180deg)';
+                });
+
+                // Add facility items
+                const facilitiesContainer = document.createElement('div');
+                courts.forEach(court => {
+                    const facilityItem = createFacilityItem(court);
+                    facilitiesContainer.appendChild(facilityItem);
+                });
+
+                districtContent.appendChild(facilitiesContainer);
+            });
+
+            // Setup facility item click events
+            setupFacilityItemEvents();
+        }
+
+        // Create a facility item element
+        function createFacilityItem(court) {
+            const props = court.properties;
+            const facilityItem = document.createElement('div');
+            facilityItem.className = 'facility-item';
+            facilityItem.dataset.objectId = props.OBJECTID;
+
+            // Parse amenities from SEARCH02_TC
+            const amenities = props.SEARCH02_TC ? props.SEARCH02_TC.split(',') : [];
+            
+            // Get additional facilities from NSEARCH01_TC to NSEARCH06_TC
+            const additionalFacilities = [];
+            for (let i = 1; i <= 6; i++) {
+                const facility = props[`NSEARCH0${i}_TC`];
+                if (facility && facility !== 'N.A.' && facility !== 'http://www.lcsd.gov.hk/tc/facilities/facilitieslist/landsports/sportground.html') {
+                    additionalFacilities.push(facility);
+                }
+            }
+            
+            // Get basketball court count
+            const courtCount = parseInt(props.No__of_Basketball_Courts_TC) || 0;
+
+            facilityItem.innerHTML = `
+                <div class="facility-name">
+                    ${props.NAME_TC}
+                    ${courtCount > 0 ? `<span class="court-count">${courtCount}個籃球場</span>` : ''}
+                    <span class="facility-type">${props.DATASET_TC}</span>
+                </div>
+                <div class="facility-details">
+                    <div class="facility-detail-item">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span>${props.ADDRESS_TC}</span>
+                    </div>
+                    <div class="facility-detail-item">
+                        <i class="fas fa-basketball-ball"></i>
+                        <span>籃球場數量: ${courtCount > 0 ? courtCount : '資料未提供'}</span>
+                    </div>
+                    ${amenities.length > 0 ? `
+                    <div class="facility-detail-item">
+                        <i class="fas fa-th-list"></i>
+                        <div>
+                            <div style="margin-bottom: 5px;">場內設施:</div>
+                            <div class="amenities">
+                                ${amenities.map(amenity => `<span class="amenity-tag">${amenity.trim()}</span>`).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    ` : ''}
+                    ${additionalFacilities.length > 0 ? `
+                    <div class="facility-detail-item">
+                        <i class="fas fa-info-circle"></i>
+                        <div>
+                            <div style="margin-bottom: 5px;">其他設施:</div>
+                            <div style="font-size: 0.85rem;word-break: break-all">${additionalFacilities.join(', ')}</div>
+                        </div>
+                    </div>
+                    ` : ''}
+                    <div class="facility-detail-item">
+                        <i class="fas fa-calendar-alt"></i>
+                        <span>最後更新: ${props.LASTUPDATE || '未提供'}</span>
+                    </div>
+                </div>
+            `;
+
+            return facilityItem;
+        }
+
+        // Setup facility item click events
+        function setupFacilityItemEvents() {
+            document.querySelectorAll('.facility-item').forEach(item => {
+                item.addEventListener('click', function () {
+                    // Remove active class from all facility items
+                    document.querySelectorAll('.facility-item').forEach(i => {
+                        i.classList.remove('active');
+                    });
+
+                    // Add active class to clicked item
+                    this.classList.add('active');
+
+                    // Find and highlight the corresponding marker
+                    const objectId = parseInt(this.dataset.objectId);
+                    const court = allBasketballCourts.find(c => c.properties.OBJECTID === objectId);
+
+                    if (court) {
+                        selectBasketballCourt(court);
+                    }
+                });
+            });
+        }
+
+        // Create markers on the map
+        function createMapMarkers() {
+            if (basketballCourtsLayer) {
+                map.removeLayer(basketballCourtsLayer);
+            }
+
+            basketballCourtsLayer = L.layerGroup().addTo(map);
+
+            allBasketballCourts.forEach(court => {
+                const props = court.properties;
+                const coords = props.longitude_lands && props.latitude_lands ? 
+                    [props.latitude_lands, props.longitude_lands] : 
+                    [court.geometry.coordinates[1], court.geometry.coordinates[0]];
+
+                // Get basketball court count
+                const courtCount = parseInt(props.No__of_Basketball_Courts_TC) || 0;
+                
+                // Adjust marker size based on number of courts
+                const radius = courtCount > 0 ? Math.min(8 + courtCount, 20) : 10;
+
+                // Create marker
+                const marker = L.circleMarker(coords, {
+                    radius: radius,
+                    fillColor: '#ff6b6b',
+                    color: '#c0392b',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                });
+
+                // Parse amenities from SEARCH02_TC
+                const amenities = props.SEARCH02_TC ? props.SEARCH02_TC.split(',') : [];
+
+                // Add click event
+                marker.on('click', function () {
+                    selectBasketballCourt(court);
+
+                    // Find and highlight the corresponding list item
+                    document.querySelectorAll('.facility-item').forEach(item => {
+                        item.classList.remove('active');
+                        if (parseInt(item.dataset.objectId) === props.OBJECTID) {
+                            item.classList.add('active');
+                            item.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            
+                            // Open parent district accordion
+                            const districtAccordion = item.closest('.district-accordion');
+                            if (districtAccordion) {
+                                const districtHeader = districtAccordion.querySelector('.district-header');
+                                const districtContent = districtAccordion.querySelector('.district-content');
+                                
+                                if (!districtHeader.classList.contains('active')) {
+                                    districtHeader.classList.add('active');
+                                    districtContent.classList.add('active');
+                                    districtHeader.querySelector('.fa-chevron-down').style.transform = 'rotate(180deg)';
+                                }
+                            }
+                        }
+                    });
+                });
+
+                basketballCourtsLayer.addLayer(marker);
+            });
+        }
+
+        // Select and highlight a basketball court
+        function selectBasketballCourt(court) {
+            const props = court.properties;
+            const coords = props.longitude_lands && props.latitude_lands ? 
+                [props.latitude_lands, props.longitude_lands] : 
+                [court.geometry.coordinates[1], court.geometry.coordinates[0]];
+
+            // Clear previous selection
+            if (selectedCourt) {
+                map.removeLayer(selectedCourt);
+                selectedCourt = null;
+            }
+
+            // Get basketball court count
+            const courtCount = parseInt(props.No__of_Basketball_Courts_TC) || 0;
+            const radius = courtCount > 0 ? Math.min(10 + courtCount, 22) : 12;
+
+            // Create highlighted marker
+            selectedCourt = L.circleMarker(coords, {
+                radius: radius,
+                fillColor: '#4a90e2',
+                color: '#2c6c91',
+                weight: 3,
+                opacity: 1,
+                fillOpacity: 0.9
+            }).addTo(map);
+
+            // Parse amenities from SEARCH02_TC
+            const amenities = props.SEARCH02_TC ? props.SEARCH02_TC.split(',') : [];
+            
+            // Get additional facilities from NSEARCH01_TC to NSEARCH06_TC
+            const additionalFacilities = [];
+            for (let i = 1; i <= 6; i++) {
+                const facility = props[`NSEARCH0${i}_TC`];
+                if (facility && facility !== 'N.A.' && facility !== 'http://www.lcsd.gov.hk/tc/facilities/facilitieslist/landsports/sportground.html') {
+                    additionalFacilities.push(facility);
+                }
+            }
+
+            // Pan to the selected court
+            map.setView(coords, 14);
+
+            // Create detailed popup content
+            let popupContent = `
+                <div style="font-weight: bold; margin-bottom: 8px; color: #2c3e50; font-size: 1.2em">${props.NAME_TC}</div>
+                <div style="margin-bottom: 5px;"><strong>地區:</strong> ${props.SEARCH01_TC}</div>
+                <div style="margin-bottom: 5px;"><strong>地址:</strong> ${props.ADDRESS_TC}</div>
+                <div style="margin-bottom: 5px;"><strong>設施類型:</strong> ${props.DATASET_TC}</div>
+                <div style="margin-bottom: 5px;"><strong>籃球場數量:</strong> ${courtCount > 0 ? courtCount : '資料未提供'}</div>
+            `;
+            
+            if (amenities.length > 0) {
+                popupContent += `<div style="margin-bottom: 5px;"><strong>場內設施:</strong> ${amenities.map(a => a.trim()).join(', ')}</div>`;
+            }
+            
+            if (additionalFacilities.length > 0) {
+                popupContent += `<div style="margin-bottom: 5px;word-break: break-all;"><strong>其他設施:</strong> ${additionalFacilities.join(', ')}</div>`;
+            }
+            
+            // Add website link if available
+            const websiteTC = props.NSEARCH06_TC;
+            if (websiteTC && websiteTC !== 'N.A.' && websiteTC.startsWith('http')) {
+                popupContent += `<div style="margin-bottom: 5px;"><strong>網站:</strong> <a href="${websiteTC}" target="_blank">${props.NAME_TC}</a></div>`;
+            }
+            
+            popupContent += `
+                <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee;">
+                    <small class="text-muted"><strong>最後更新:</strong> ${props.LASTUPDATE || '未提供'}</small>
+                </div>
+            `;
+
+            selectedCourt.bindPopup(popupContent).openPopup();
+
+            // Show notification
+            showNotification(`已選取: ${props.NAME_TC}`);
+        }
+
+        // Filter basketball courts based on search input
+        function filterBasketballCourts(searchTerm) {
+            const searchLower = searchTerm.toLowerCase().trim();
+
+            if (!searchLower) {
+                // Show all courts
+                document.querySelectorAll('.facility-item').forEach(item => {
+                    item.style.display = 'block';
+                });
+
+                document.querySelectorAll('.district-accordion').forEach(district => {
+                    district.style.display = 'block';
+                });
+
+                document.getElementById('totalBasketballCourts').textContent = 
+                    allBasketballCourts.reduce((sum, court) => sum + (parseInt(court.properties.No__of_Basketball_Courts_TC) || 0), 0);
+                return;
+            }
+
+            let visibleCount = 0;
+            let visibleCourtCount = 0;
+
+            // Filter facility items
+            document.querySelectorAll('.facility-item').forEach(item => {
+                const facilityName = item.querySelector('.facility-name').textContent.toLowerCase();
+                const details = item.querySelector('.facility-details').textContent.toLowerCase();
+
+                if (facilityName.includes(searchLower) || details.includes(searchLower)) {
+                    item.style.display = 'block';
+                    visibleCount++;
+                    
+                    // Get court count for visible item
+                    const objectId = parseInt(item.dataset.objectId);
+                    const court = allBasketballCourts.find(c => c.properties.OBJECTID === objectId);
+                    if (court) {
+                        const courtCount = parseInt(court.properties.No__of_Basketball_Courts_TC) || 0;
+                        visibleCourtCount += courtCount;
+                    }
+
+                    // Ensure parent district is visible
+                    const districtAccordion = item.closest('.district-accordion');
+                    if (districtAccordion) {
+                        districtAccordion.style.display = 'block';
+
+                        // Expand the district
+                        const districtHeader = districtAccordion.querySelector('.district-header');
+                        const districtContent = districtAccordion.querySelector('.district-content');
+
+                        if (!districtHeader.classList.contains('active')) {
+                            districtHeader.classList.add('active');
+                            districtContent.classList.add('active');
+                            districtHeader.querySelector('.fa-chevron-down').style.transform = 'rotate(180deg)';
+                        }
+                    }
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+
+            // Hide districts with no visible facilities
+            document.querySelectorAll('.district-accordion').forEach(district => {
+                const visibleItems = district.querySelectorAll('.facility-item[style="display: block"]');
+                if (visibleItems.length === 0) {
+                    district.style.display = 'none';
+                }
+            });
+
+            // Update visible count
+            document.getElementById('totalBasketballCourts').textContent = visibleCourtCount;
+        }
+
+        // Show temporary notification
+        function showNotification(message) {
+            // Create notification element
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background-color: #2c6c91;
+                color: white;
+                padding: 15px 20px;
+                border-radius: 5px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+                z-index: 10000;
+                font-weight: 500;
+                max-width: 300px;
+                animation: fadeInOut 3s ease-in-out;
+            `;
+
+            // Add keyframes for animation
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes fadeInOut {
+                    0% { opacity: 0; transform: translateY(-10px); }
+                    10% { opacity: 1; transform: translateY(0); }
+                    90% { opacity: 1; transform: translateY(0); }
+                    100% { opacity: 0; transform: translateY(-10px); }
+                }
+            `;
+            document.head.appendChild(style);
+
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            // Remove after animation completes
+            setTimeout(() => {
+                notification.remove();
+                style.remove();
+            }, 3000);
+        }
+    </script>
+</body>
+
+</html>
